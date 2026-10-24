@@ -19,6 +19,10 @@
 
 ## 资料、图片及检索来源
 
+安装程序使用 [NSIS 3.11](https://sourceforge.net/projects/nsis/files/NSIS%203/3.11/) 编译，采用 zlib 压缩。NSIS 各组件版权与许可原文见 [COPYING](licenses/nsis/COPYING)。可复用安装构建脚本固定校验官方便携发行包的 SHA-256。
+
+安装程序附带经微软签名验证的 [WebView2 Evergreen Bootstrapper](https://developer.microsoft.com/microsoft-edge/webview2/)，只在缺少运行时时调用。微软组件保留其原有版权，适用微软分发及使用条款，不适用本项目 MIT 协议。
+
 - [Steam / Valve](https://store.steampowered.com/)：商店名称、AppID、封面和 Library Hero 等图片。
 - [VNDB](https://vndb.org/) 与 [API 文档](https://api.vndb.org/kana)：作品资料、别名、平台链接及图片查询。
 - [DLsite](https://www.dlsite.com/)：作品名称、RJ 编号及商品图片。

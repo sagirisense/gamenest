@@ -27,11 +27,16 @@
 
 ## Windows 下载
 
-从 [最新 Release](https://github.com/sagirisense/gamenest/releases/latest) 下载 `GameNest-v0.1.0-windows-amd64.zip`，解压整个文件夹后双击 `游栖.exe`，无需安装 Go、Node.js 或 Python。
+从 [最新 Release](https://github.com/sagirisense/gamenest/releases/latest) 下载 Windows x64 版本，无需安装 Go、Node.js 或 Python：
+
+- **安装版**：`GameNest-v0.1.0-windows-amd64-setup.exe`，中文安装向导，创建桌面与开始菜单快捷方式，并提供系统卸载入口。默认安装到当前用户的 `%LOCALAPPDATA%\Programs\GameNest`，无需管理员权限；缺少 WebView2 时会联网安装微软运行时。
+- **便携版**：`GameNest-v0.1.0-windows-amd64.zip`，解压整个文件夹后双击 `游栖.exe`。
 
 适用于 Windows 10 / 11 x64，需要系统具备 WebView2 Runtime。首次打开为空游戏库，请先在右下角设置中选择自己的扫描目录，再点击“扫描游戏”。移动程序时请一起移动相邻的 `data/`；升级时备份并保留自己的 `data/`，不要用压缩包中的空数据覆盖它。发布包不包含开发者的游戏清单、图片缓存、偏好或 API 密钥。
 
 Release 同时提供 `SHA256SUMS.txt`，可用 PowerShell 的 `Get-FileHash 文件名 -Algorithm SHA256` 核对下载文件。
+
+安装版升级不会覆盖已有 `data/games.json`；卸载只移除程序、所带文档和快捷方式，保留 `data/` 及其他未随安装包提供的文件。安装前请先退出游栖，更新重要资料前仍建议备份。
 
 ## 从源码运行
 
@@ -64,6 +69,17 @@ cd desktop
 脚本安装锁定依赖、运行 Go 测试并构建 Wails 应用，输出为根目录下的 **`游栖/游栖.exe`**。首次构建生成空游戏库，重复构建保留输出目录内已有的 `data/`；不会将开发者的个人游戏资料打包。
 
 分发时保留相邻的 `LICENSE`、`THIRD_PARTY_NOTICES.md` 和 `licenses/`。也可直接运行 `wails build`，产物为 `desktop/build/bin/GameNest.exe`。预构建 Windows 便携包见 [Release](https://github.com/sagirisense/gamenest/releases/latest)。
+
+### 生成安装程序
+
+```powershell
+cd desktop
+./build-installer.ps1
+```
+
+脚本完整构建并测试应用，自动下载校验固定版本的便携 NSIS 编译器，并校验微软 WebView2 引导程序签名。首次运行需联网，工具缓存位于 `desktop/.tools/`。只从显式列出的程序、文档、许可和空游戏库模板组装安装内容，不复制个人 `data/`。
+
+输出为 `desktop/build/bin/GameNest-v0.1.0-windows-amd64-setup.exe`，同时生成 `.sha256` 校验文件。版本号读取 `desktop/wails.json`。已有最新应用构建时可用 `./build-installer.ps1 -SkipBuild`；也可用 `-NsisPath 'C:\路径\makensis.exe'` 指定已有 NSIS 编译器。请使用该脚本生成安装版，以保留本项目的用户数据保护规则。
 
 ## 使用方式
 

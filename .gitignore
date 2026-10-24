@@ -22,6 +22,8 @@
 *.zip
 *.log
 **/.test-tmp/
+**/.tools/
+**/.installer-stage/
 /desktop/qa/
 /desktop/design-qa.md
 /desktop/frontend/package.json.md5

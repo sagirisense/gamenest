@@ -52,3 +52,5 @@
 | @babel/types | 7.29.8 | [LICENSE](npm/@babel_types/LICENSE) |
 
 Nunito 字体：[SIL OFL 1.1](fonts/Nunito/OFL.txt)。
+
+Windows 安装程序：NSIS 3.11，[版权与各组件许可](nsis/COPYING)，安装器使用 zlib 压缩。
