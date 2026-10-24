@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$SkipBuild,
-    [string]$NsisPath
+    [string]$NsisPath,
+    [string]$StageDirectory
 )
 
 $ErrorActionPreference = 'Stop'
@@ -46,7 +47,8 @@ try {
     if ([BitConverter]::ToUInt16($bytes, $peOffset + 4) -ne 0x8664) { throw '安装包只支持 Windows amd64 应用' }
 
     # Always stage a new allowlisted payload; never copy either local data directory.
-    $stage = Join-Path $PSScriptRoot ('.installer-stage\' + [guid]::NewGuid().ToString('N'))
+    $stage = if ($StageDirectory) { [IO.Path]::GetFullPath($StageDirectory) } else { Join-Path $PSScriptRoot ('.installer-stage\' + [guid]::NewGuid().ToString('N')) }
+    if (Test-Path -LiteralPath $stage) { throw '安装暂存目录必须为全新目录' }
     $payload = Join-Path $stage 'payload'
     New-Item -ItemType Directory -Path (Join-Path $payload 'data') -Force | Out-Null
     Copy-Item -LiteralPath $binary -Destination (Join-Path $payload '游栖.exe')

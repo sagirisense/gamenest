@@ -99,6 +99,19 @@ cd desktop
 
 ## 开发与贡献
 
+### 自动发布 Windows 版本
+
+推送 `v0.1.1` 这样的版本标签后，GitHub Actions 会自动测试、构建便携版和安装版、检查空游戏库及打包文件白名单，然后发布 Release。版本号从标签读取，无需个人访问令牌或游戏 API 密钥。手动运行工作流时只构建，不发布。
+
+```powershell
+git tag v0.1.1
+git push origin v0.1.1
+```
+
+详细步骤、附件及数据保护规则见 [自动构建与发布](docs/RELEASING.md)。
+
+### 本地验证
+
 ```powershell
 cd desktop
 npm --prefix frontend ci

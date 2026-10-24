@@ -1,0 +1,167 @@
+name: Windows Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 45
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.version.outputs.commit }}
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate source privacy and release version
+        id: version
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python scripts/release_artifacts.py source
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m unittest discover -s scripts -p 'test_*.py'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $path = 'desktop/wails.json'
+          $config = Get-Content $path -Raw | ConvertFrom-Json
+          $version = $config.info.productVersion
+          if ($env:GITHUB_REF_TYPE -eq 'tag') {
+            if ($env:GITHUB_REF_NAME -notmatch '^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') {
+              throw '版本标签必须为 vMAJOR.MINOR.PATCH，例如 v0.1.1'
+            }
+            $version = $env:GITHUB_REF_NAME.Substring(1)
+          }
+          if ($version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$') { throw '无效版本号' }
+          $config.info.productVersion = $version
+          [IO.File]::WriteAllText((Join-Path $PWD $path), ($config | ConvertTo-Json -Depth 10) + "`n", [Text.UTF8Encoding]::new($false))
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "RELEASE_VERSION=$version" >> $env:GITHUB_ENV
+          $sourceCommit = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "commit=$sourceCommit" >> $env:GITHUB_OUTPUT
+          "SOURCE_COMMIT=$sourceCommit" >> $env:GITHUB_ENV
+          "PACKAGE_STAGE=$($env:RUNNER_TEMP)/gamenest-$([guid]::NewGuid().ToString('N'))" >> $env:GITHUB_ENV
+          "RELEASE_DIST=$($env:RUNNER_TEMP)/gamenest-artifacts-$([guid]::NewGuid().ToString('N'))" >> $env:GITHUB_ENV
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: stable
+          cache-dependency-path: desktop/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: desktop/frontend/package-lock.json
+      - name: Install pinned Wails CLI
+        run: |
+          go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          "$(go env GOPATH)/bin" >> $env:GITHUB_PATH
+      - name: Test and build Windows application and installer
+        run: ./desktop/build-installer.ps1 -StageDirectory $env:PACKAGE_STAGE
+      - name: Package and verify public artifacts
+        run: |
+          python scripts/release_artifacts.py package `
+            --payload "$env:PACKAGE_STAGE/payload" `
+            --installer "desktop/build/bin/GameNest-v$env:RELEASE_VERSION-windows-amd64-setup.exe" `
+            --bootstrapper desktop/.tools/MicrosoftEdgeWebview2Setup.exe `
+            --output "$env:RELEASE_DIST" --version "$env:RELEASE_VERSION" --commit "$env:SOURCE_COMMIT"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows-${{ steps.version.outputs.version }}
+          path: |
+            ${{ env.RELEASE_DIST }}/GameNest-v${{ steps.version.outputs.version }}-windows-amd64.zip
+            ${{ env.RELEASE_DIST }}/GameNest-v${{ steps.version.outputs.version }}-windows-amd64-setup.exe
+            ${{ env.RELEASE_DIST }}/SHA256SUMS.txt
+            ${{ env.RELEASE_DIST }}/release-manifest.json
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      RELEASE_VERSION: ${{ needs.build.outputs.version }}
+      SOURCE_COMMIT: ${{ needs.build.outputs.commit }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows-${{ needs.build.outputs.version }}
+          path: release-dist
+      - name: Recheck downloaded artifacts before publishing
+        run: python3 scripts/release_artifacts.py verify --output release-dist --version "$RELEASE_VERSION" --commit "$SOURCE_COMMIT"
+      - name: Publish complete Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag="v$RELEASE_VERSION"
+          test "$GITHUB_REF_NAME" = "$tag"
+          test "$(gh api "repos/$GH_REPO/commits/$tag" --jq '.sha')" = "$SOURCE_COMMIT"
+          marker="<!-- gamenest-actions:$SOURCE_COMMIT -->"
+          if gh release view "$tag" --json isDraft,body > "$RUNNER_TEMP/existing-release.json" 2>/dev/null; then
+            python3 - "$RUNNER_TEMP/existing-release.json" "$marker" <<'PY'
+          import json, sys
+          release = json.load(open(sys.argv[1]))
+          if not release['isDraft'] or sys.argv[2] not in release['body']:
+              raise SystemExit('Refusing to overwrite an existing published or unrelated Release')
+          PY
+          else
+            cat > "$RUNNER_TEMP/release-notes.md" <<EOF
+          $marker
+          ## 游栖 · GameNest $tag
+
+          - **安装版**：下载 \`GameNest-$tag-windows-amd64-setup.exe\`，按中文向导安装。
+          - **便携版**：下载 \`GameNest-$tag-windows-amd64.zip\`，解压后双击 \`游栖.exe\`。
+          - 适用于 Windows 10 / 11 x64。缺少 WebView2 时，安装版会联网安装微软运行时。
+          - 首次使用为空游戏库，请在设置中选择自己的游戏目录。安装前请退出游栖，升级前备份个人资料；升级及卸载保留 \`data/\`。
+          - 不包含开发者的游戏数据、图片缓存、偏好或密钥。应用与安装程序未进行代码签名。
+          - \`SHA256SUMS.txt\` 提供校验值，\`release-manifest.json\` 记录源提交及实际打包文件摘要。
+
+          从标签提交自动构建并通过测试；发布前已复核文件白名单、空游戏库、ZIP/安装包内容及 SHA-256。未执行实际安装/卸载测试。
+
+          [使用指南](https://github.com/$GH_REPO/blob/$tag/docs/USAGE.md) · [开源协议](https://github.com/$GH_REPO/blob/$tag/LICENSE)
+          EOF
+            gh release create "$tag" --verify-tag --target "$SOURCE_COMMIT" \
+              --title "游栖 · GameNest $tag" --notes-file "$RUNNER_TEMP/release-notes.md" --draft
+          fi
+          gh release upload "$tag" --clobber \
+            "release-dist/GameNest-$tag-windows-amd64.zip" \
+            "release-dist/GameNest-$tag-windows-amd64-setup.exe" \
+            release-dist/SHA256SUMS.txt release-dist/release-manifest.json
+          gh api "repos/$GH_REPO/releases/tags/$tag" > "$RUNNER_TEMP/uploaded-release.json"
+          python3 - "$RUNNER_TEMP/uploaded-release.json" <<'PY'
+          import hashlib, json, pathlib, sys
+          release = json.load(open(sys.argv[1]))
+          expected = {p.name: p for p in pathlib.Path('release-dist').iterdir()}
+          assets = {a['name']: a for a in release['assets']}
+          if not release['draft'] or set(assets) != set(expected):
+              raise SystemExit('Release asset list differs from verified files')
+          for name, path in expected.items():
+              asset = assets[name]
+              if asset['state'] != 'uploaded' or asset['digest'] != 'sha256:' + hashlib.sha256(path.read_bytes()).hexdigest():
+                  raise SystemExit('Uploaded asset digest mismatch: ' + name)
+          PY
+          gh release edit "$tag" --draft=false --latest
