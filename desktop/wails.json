@@ -1,0 +1,19 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "GameNest",
+  "outputfilename": "GameNest",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "Sagiri_sense"
+  },
+  "info": {
+    "companyName": "Sagiri_sense",
+    "productName": "游栖 · GameNest",
+    "productVersion": "0.1.0",
+    "copyright": "Copyright (c) 2026 Sagiri_sense",
+    "comments": "让收藏的游戏有个家"
+  }
+}

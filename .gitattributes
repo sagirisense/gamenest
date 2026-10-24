@@ -1,0 +1,13 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
+
+# Keep third-party license originals and generated templates unchanged.
+licenses/** -text -whitespace
+desktop/frontend/src/assets/fonts/OFL.txt -text -whitespace
+desktop/frontend/wailsjs/** -whitespace
+desktop/build/** -whitespace

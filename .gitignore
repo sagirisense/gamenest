@@ -1,0 +1,40 @@
+**/integrations.json
+
+# Local library, credentials and generated artwork
+**/data/
+/games.json
+/metadata.json
+/last-enrichment.json
+/inventory.txt
+/covers/
+/icons/
+.env
+.env.*
+!.env.example
+
+# Build output and local verification
+**/node_modules/
+**/dist/
+**/__pycache__/
+*.py[cod]
+*.exe
+*.syso
+*.zip
+*.log
+**/.test-tmp/
+/desktop/qa/
+/desktop/design-qa.md
+/desktop/frontend/package.json.md5
+/design/
+/游戏收藏馆桌面版/
+/游栖/
+/gamenest-repository.png
+/.publish-*/
+
+# Earlier local Python prototype (desktop/ is the published application)
+/*.py
+/index.html
+/metadata-ui.js
+/extract-icons.ps1
+/使用说明.md
+/启动游戏库.cmd
