@@ -18,10 +18,27 @@ New-Item -ItemType Directory -Path $tools -Force | Out-Null
 $nsisHash = 'c7d27f780ddb6cffb4730138cd1591e841f4b7edb155856901cdf5f214394fa1'
 if (-not $NsisPath) {
     $archive = Join-Path $tools 'nsis-3.11.zip'
-    if (-not (Test-Path -LiteralPath $archive)) {
-        Invoke-WebRequest -UseBasicParsing -Uri 'https://downloads.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip' -OutFile $archive
+    $verified = (Test-Path -LiteralPath $archive) -and ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -eq $nsisHash)
+    if (-not $verified) {
+        $download = $archive + '.download'
+        foreach ($hostName in @('downloads.sourceforge.net', 'master.dl.sourceforge.net', 'netix.dl.sourceforge.net')) {
+            try {
+                Invoke-WebRequest -UseBasicParsing -Uri "https://$hostName/project/nsis/NSIS%203/3.11/nsis-3.11.zip" -OutFile $download -TimeoutSec 90
+                $actualHash = (Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant()
+                if ($actualHash -eq $nsisHash) {
+                    Move-Item -LiteralPath $download -Destination $archive -Force
+                    $verified = $true
+                    break
+                }
+                Write-Warning "NSIS download rejected from $hostName (SHA-256: $actualHash)"
+            } catch {
+                Write-Warning "NSIS download failed from ${hostName}: $($_.Exception.Message)"
+            } finally {
+                if (Test-Path -LiteralPath $download) { Remove-Item -LiteralPath $download }
+            }
+        }
     }
-    if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $nsisHash) { throw 'NSIS 下载校验失败' }
+    if (-not $verified) { throw '所有 NSIS 下载源均未通过校验，停止构建' }
     Expand-Archive -LiteralPath $archive -DestinationPath $tools -Force
     $NsisPath = Join-Path $tools 'nsis-3.11\makensis.exe'
 }
