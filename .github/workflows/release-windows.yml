@@ -57,7 +57,7 @@ jobs:
           "RELEASE_DIST=$($env:RUNNER_TEMP)/gamenest-artifacts-$([guid]::NewGuid().ToString('N'))" >> $env:GITHUB_ENV
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: stable
+          go-version: '1.26.4'
           cache-dependency-path: desktop/go.sum
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
