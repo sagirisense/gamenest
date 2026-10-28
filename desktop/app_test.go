@@ -129,10 +129,18 @@ func TestCoverUpdatesURLAndHandler(t *testing.T) {
 	if e != nil {
 		t.Fatal(e)
 	}
+	// Different cover contents can have identical timestamps on a fast filesystem.
+	fixedTime := time.Unix(1700000000, 0)
+	if e := os.Chtimes(filepath.Join(a.dir, filepath.FromSlash(p)), fixedTime, fixedTime); e != nil {
+		t.Fatal(e)
+	}
 	a.meta["sample"] = map[string]any{"image": p}
 	before, _ := a.GetLibrary()
 	p2, e := a.saveImage("sample", makePNG(color.RGBA{B: 255, A: 255}))
 	if e != nil {
+		t.Fatal(e)
+	}
+	if e := os.Chtimes(filepath.Join(a.dir, filepath.FromSlash(p2)), fixedTime, fixedTime); e != nil {
 		t.Fatal(e)
 	}
 	a.meta["sample"]["image"] = p2

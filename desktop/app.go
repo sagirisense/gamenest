@@ -213,7 +213,7 @@ func (a *App) GetLibrary() (Library, error) {
 		g.HasCover = !strings.Contains(p, string(filepath.Separator)+"icons"+string(filepath.Separator))
 		st, e := os.Stat(p)
 		if e == nil {
-			g.Image = fmt.Sprintf("/library-image/%s?v=%d", g.ID, st.ModTime().UnixNano())
+			g.Image = fmt.Sprintf("/library-image/%s?v=%s-%d", g.ID, stableID(p), st.ModTime().UnixNano())
 		} else {
 			g.Image = ""
 		}
