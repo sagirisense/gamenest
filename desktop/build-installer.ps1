@@ -21,9 +21,16 @@ if (-not $NsisPath) {
     $verified = (Test-Path -LiteralPath $archive) -and ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -eq $nsisHash)
     if (-not $verified) {
         $download = $archive + '.download'
-        foreach ($hostName in @('downloads.sourceforge.net', 'master.dl.sourceforge.net', 'netix.dl.sourceforge.net')) {
+        $sources = @(
+            'https://github.com/tauri-apps/binary-releases/releases/download/nsis-3.11/nsis-3.11.zip',
+            'https://downloads.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip',
+            'https://master.dl.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip',
+            'https://netix.dl.sourceforge.net/project/nsis/NSIS%203/3.11/nsis-3.11.zip'
+        )
+        foreach ($source in $sources) {
+            $hostName = ([uri]$source).Host
             try {
-                Invoke-WebRequest -UseBasicParsing -Uri "https://$hostName/project/nsis/NSIS%203/3.11/nsis-3.11.zip" -OutFile $download -TimeoutSec 90
+                Invoke-WebRequest -UseBasicParsing -Uri $source -OutFile $download -TimeoutSec 90
                 $actualHash = (Get-FileHash -LiteralPath $download -Algorithm SHA256).Hash.ToLowerInvariant()
                 if ($actualHash -eq $nsisHash) {
                     Move-Item -LiteralPath $download -Destination $archive -Force

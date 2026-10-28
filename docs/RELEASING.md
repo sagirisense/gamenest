@@ -44,6 +44,7 @@ git push origin v0.1.1
 - 构建任务只有 `contents: read`，Git 凭据不保留在检出目录中。
 - 只有发布任务拥有 `contents: write`，内置 `GITHUB_TOKEN` 仅提供给发布步骤。上传范围是四个明确指定的附件。
 - Actions 依赖使用固定的提交 SHA。NSIS 下载有固定 SHA-256 校验，WebView2 引导程序有微软签名校验。
+- NSIS 优先使用 Tauri 官方仓库维护的原始发行包镜像，失败后尝试 SourceForge；所有来源必须匹配同一个固定摘要，不接受网页或不匹配的下载。
 - 当前未设置代码签名；自动化不执行实际安装或卸载测试，也不使用开发者本机数据。
 
 实现与配置依据：[GitHub 工作流语法](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)、[GITHUB_TOKEN 权限](https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication)、[GitHub CLI Release](https://cli.github.com/manual/gh_release)。
